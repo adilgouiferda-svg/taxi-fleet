@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <meta name="theme-color" content="#F59E0B"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="أسطول"/>
+  <title>🚖 أسطول</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root{--gold:#F59E0B;--green:#10B981;--red:#EF4444;--blue:#3B82F6;--muted:#475569;--dim:#94a3b8}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;overflow:hidden}
+    body{font-family:'Cairo',sans-serif;background:linear-gradient(160deg,#050d1a,#0d1b2e,#0a1628);color:#e2e8f0;direction:rtl}
+    #root{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+    /* pages */
+    .page{flex:1;display:flex;flex-direction:column;overflow:hidden;animation:fi .22s ease}
+    @keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+    .scroll{flex:1;overflow-y:auto;padding:16px;max-width:720px;width:100%;margin:0 auto}
+
+    /* header */
+    .hdr{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;
+         background:linear-gradient(90deg,#0a1628,#162040);border-bottom:1px solid rgba(245,158,11,.12);flex-shrink:0}
+    .hdr-title{font-size:19px;font-weight:900;color:var(--gold)}
+    .hdr-sub{font-size:11px;color:#2d3f58;margin-top:1px}
+
+    /* tabs */
+    .tabs{display:flex;background:rgba(0,0,0,.25);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;overflow-x:auto}
+    .tab{flex:1;padding:12px 8px;border:none;cursor:pointer;font-family:'Cairo',sans-serif;font-size:12px;font-weight:700;
+         background:transparent;color:#394f6b;border-bottom:2px solid transparent;white-space:nowrap;transition:all .18s}
+    .tab.on{color:var(--gold);border-bottom-color:var(--gold);background:rgba(245,158,11,.06)}
+
+    /* card */
+    .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px;margin-bottom:12px}
+
+    /* inputs */
+    .inp{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.11);border-radius:10px;
+         padding:10px 14px;color:#e2e8f0;font-size:14px;font-family:'Cairo',sans-serif;margin-top:4px;margin-bottom:12px;outline:none}
+    .inp:focus{border-color:rgba(245,158,11,.5)}
+    select.inp{appearance:none}
+    .lbl{font-size:12px;color:var(--dim);font-weight:600;display:block}
+    .fld{margin-bottom:2px}
+
+    /* buttons */
+    .btn{border:none;border-radius:10px;padding:10px 18px;font-family:'Cairo',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all .15s}
+    .btn:active{transform:scale(.97)}
+    .gold{background:var(--gold);color:#000}
+    .ghost{background:rgba(255,255,255,.07);color:#c8d8e8}
+    .red-btn{background:rgba(239,68,68,.8);color:#fff}
+    .full{width:100%;padding:14px;font-size:15px;margin-bottom:14px}
+
+    /* kpi */
+    .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+    .kpi{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px 10px;text-align:center}
+
+    /* modal */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:flex-end;justify-content:center}
+    .modal{background:#111e30;border-radius:22px 22px 0 0;width:100%;max-width:660px;max-height:93vh;overflow-y:auto;padding:24px;padding-bottom:52px}
+    .modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .modal-title{font-weight:800;font-size:17px}
+    .x-btn{background:rgba(255,255,255,.08);border:none;color:#fff;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:18px}
+
+    /* login */
+    .login-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;overflow-y:auto}
+    .login-box{width:100%;max-width:380px}
+    .login-logo{text-align:center;margin-bottom:32px}
+    .login-logo .icon{font-size:72px;display:block;margin-bottom:10px}
+    .login-logo h1{font-size:26px;font-weight:900;color:var(--gold);margin-bottom:4px}
+    .login-logo p{font-size:13px;color:#334155}
+    .login-role{display:flex;gap:8px;margin-bottom:24px}
+    .role-btn{flex:1;padding:12px;border-radius:12px;border:2px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);
+              cursor:pointer;font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;color:#64748b;transition:all .2s;text-align:center}
+    .role-btn.active{border-color:var(--gold);background:rgba(245,158,11,.12);color:var(--gold)}
+    .login-err{color:#f87171;font-size:13px;text-align:center;min-height:20px;margin-bottom:8px}
+    .pw-wrap{position:relative}
+    .pw-wrap .inp{padding-left:40px}
+    .pw-eye{position:absolute;left:12px;top:50%;transform:translateY(-60%);background:none;border:none;color:var(--dim);cursor:pointer;font-size:16px;padding:0}
+
+    /* driver header */
+    .drv-hdr{padding:18px 18px 20px;flex-shrink:0;overflow:hidden;position:relative}
+    .drv-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+    .drv-kpi{background:rgba(0,0,0,.28);border-radius:12px;padding:8px 10px}
+
+    /* alerts */
+    .warn{background:rgba(239,68,68,.1);border-bottom:1px solid rgba(239,68,68,.2);padding:10px 16px;flex-shrink:0}
+
+    /* entry */
+    .entry-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+    .ebox{border-radius:8px;padding:7px 10px}
+
+    /* misc */
+    .back-btn{background:rgba(0,0,0,.3);border:none;color:#fff;border-radius:8px;padding:5px 14px;cursor:pointer;
+              font-family:'Cairo',sans-serif;font-size:13px;margin-bottom:14px}
+    .prog{height:5px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden}
+    .prog-bar{height:100%;border-radius:3px}
+    .sep{border-bottom:1px solid rgba(255,255,255,.05);padding:10px 0;display:flex;justify-content:space-between}
+    .row{display:flex;align-items:center;gap:12px}
+    .rbet{display:flex;justify-content:space-between;align-items:flex-start}
+    .f1{flex:1;min-width:0}  .s0{flex-shrink:0}  .tl{text-align:left}
+    .empty{text-align:center;color:#1e3050;padding:52px 0}
+    .ei{font-size:58px;margin-bottom:10px}
+    .row-btns{display:flex;gap:10px}
+    .row-btns .btn{flex:1;padding:14px}
+    .sec{font-size:12px;font-weight:700;color:var(--gold);margin:8px 0 10px;letter-spacing:.3px}
+    .chip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.06);
+          border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:4px 10px;font-size:12px;margin:3px}
+    .tag{padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;display:inline-block}
+    .doc-b{border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+    .dmg-img{width:100%;border-radius:10px;max-height:220px;object-fit:cover;margin-top:8px}
+    .info-bar{background:rgba(16,185,129,.06);border-bottom:1px solid rgba(16,185,129,.12);
+              padding:7px 16px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;font-size:11px}
+    .spin{width:36px;height:36px;border:3px solid rgba(245,158,11,.15);border-top-color:var(--gold);
+          border-radius:50%;animation:sp .8s linear infinite;margin:0 auto}
+    @keyframes sp{to{transform:rotate(360deg)}}
+    .loading{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+    /* checkbox */
+    .chk-row{display:flex;align-items:center;padding:9px 12px;background:rgba(255,255,255,.04);border-radius:9px;cursor:pointer;margin-bottom:6px;gap:10px;font-size:13px}
+    .chk-row input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--gold)}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+/* ══════════════════════════════════════════════════════
+   ⚙️ CONFIG — بدّل هاد السطرين بمعلومات Supabase ديالك
+══════════════════════════════════════════════════════ */
+const SB_URL = "https://dygpztypsjondcmwoujn.supabase.co";
+const SB_KEY = "sb_publishable_8Bh0oXewV54UgS6Snz2kFg_jBcMwWvq";
+const ADMIN_USER = "admin";       // اسم مستخدم الأدمين
+const ADMIN_PASS = "admin1234";   // كلمة سر الأدمين — غيّرها!
+
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+/* ══════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════ */
+const COLORS = ["#F59E0B","#10B981","#3B82F6","#EF4444","#8B5CF6","#EC4899","#14B8A6","#F97316"];
+const todayStr = () => new Date().toISOString().slice(0,10);
+const fmt = n => Number(n||0).toLocaleString("ar-MA",{minimumFractionDigits:2,maximumFractionDigits:2});
+const daysLeft = d => d ? Math.ceil((new Date(d)-new Date(todayStr()))/86400000) : null;
+const exCol = d => d===null?"#475569":d<0?"#EF4444":d<=30?"#F59E0B":"#10B981";
+const exLbl = d => d===null?"غير محدد":d<0?`منتهية منذ ${Math.abs(d)} يوم`:d===0?"تنتهي اليوم!":`${d} يوم متبقي`;
+
+function h(tag,p={},c=[]){
+  const e=document.createElement(tag);
+  for(const[k,v]of Object.entries(p)){
+    if(k==="style"&&typeof v==="object") Object.assign(e.style,v);
+    else if(k.startsWith("on")) e.addEventListener(k.slice(2).toLowerCase(),v);
+    else e.setAttribute(k,v);
+  }
+  for(const x of[c].flat(9)){ if(x==null||x===false)continue; e.append(typeof x==="string"?document.createTextNode(x):x); }
+  return e;
+}
+const D=(p,c)=>h("div",p,[c].flat());
+const B=(p,c)=>h("button",p,[c].flat());
+const S=(p,c)=>h("span",p,[c].flat());
+const Img=p=>h("img",p);
+const Inp=p=>h("input",p);
+
+/* ══════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════ */
+const ST = {
+  session: null,   // {role:"admin"|"driver", driverId, name, color}
+  tab: "dashboard",
+  drivers: [], cars: [], carDrivers: [], entries: [], damages: [],
+  loading: true,
+};
+
+/* ══════════════════════════════════════════════════════
+   DATA LAYER
+══════════════════════════════════════════════════════ */
+async function loadAll(){
+  const [dr,ca,cd,en,dm] = await Promise.all([
+    sb.from("drivers").select("*").order("name"),
+    sb.from("cars").select("*").order("plate"),
+    sb.from("car_drivers").select("*"),
+    sb.from("entries").select("*").order("date",{ascending:false}),
+    sb.from("damages").select("*").order("date",{ascending:false}),
+  ]);
+  ST.drivers    = dr.data||[];
+  ST.cars       = ca.data||[];
+  ST.carDrivers = cd.data||[];
+  ST.entries    = en.data||[];
+  ST.damages    = dm.data||[];
+  ST.loading    = false;
+}
+
+// helpers for many-to-many
+function carsOfDriver(dId){ return ST.carDrivers.filter(r=>r.driver_id===dId).map(r=>ST.cars.find(c=>c.id===r.car_id)).filter(Boolean); }
+function driversOfCar(cId){ return ST.carDrivers.filter(r=>r.car_id===cId).map(r=>ST.drivers.find(d=>d.id===r.driver_id)).filter(Boolean); }
+
+const DB = {
+  async run(fn){ await fn(); await loadAll(); render(); },
+
+  addDriver: (f) => DB.run(()=>sb.from("drivers").insert({...f,color:COLORS[ST.drivers.length%COLORS.length]})),
+  delDriver: (id) => DB.run(async()=>{ await sb.from("drivers").delete().eq("id",id); }),
+  updateDriver: (id,f) => DB.run(()=>sb.from("drivers").update(f).eq("id",id)),
+
+  addCar: (f,driverIds=[]) => DB.run(async()=>{
+    const {data}=await sb.from("cars").insert(f).select().single();
+    if(data&&driverIds.length) await sb.from("car_drivers").insert(driverIds.map(d=>({car_id:data.id,driver_id:d})));
+  }),
+  updateCar: (id,f,driverIds=[]) => DB.run(async()=>{
+    await sb.from("cars").update(f).eq("id",id);
+    await sb.from("car_drivers").delete().eq("car_id",id);
+    if(driverIds.length) await sb.from("car_drivers").insert(driverIds.map(d=>({car_id:id,driver_id:d})));
+  }),
+  deleteCar: (id) => DB.run(()=>sb.from("cars").delete().eq("id",id)),
+
+  addEntry:  (f) => DB.run(()=>sb.from("entries").insert(f)),
+  delEntry:  (id)=> DB.run(()=>sb.from("entries").delete().eq("id",id)),
+  addDamage: (f) => DB.run(()=>sb.from("damages").insert(f)),
+  delDamage: (id)=> DB.run(()=>sb.from("damages").delete().eq("id",id)),
+};
+
+function statsFor(list){
+  const income=list.reduce((s,e)=>s+Number(e.income||0),0);
+  const losses=list.reduce((s,e)=>s+Number(e.losses||0),0);
+  const km=list.reduce((s,e)=>s+Number(e.km||0),0);
+  return{income,losses,net:income-losses,km,count:list.length};
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL SYSTEM
+══════════════════════════════════════════════════════ */
+function modal(title,fn){
+  const ov=D({class:"overlay"});
+  const m=D({class:"modal"});
+  const close=()=>ov.remove();
+  ov.addEventListener("click",e=>{ if(e.target===ov)close(); });
+  m.append(D({class:"modal-hdr"},[D({class:"modal-title"},title),B({class:"x-btn",onClick:close},"✕")]));
+  fn(m,close);
+  ov.append(m);
+  document.getElementById("root").append(ov);
+}
+const fld=(lbl,el)=>D({class:"fld"},[h("label",{class:"lbl"},lbl),el]);
+const mkI=(ph,val="",type="text")=>Inp({class:"inp",placeholder:ph,type,value:""+val});
+const mkD=(val="")=>Inp({class:"inp",type:"date",value:val});
+const mkN=(ph,val="")=>Inp({class:"inp",type:"number",placeholder:ph,value:""+val});
+function mkSel(opts,sel=""){
+  const s=h("select",{class:"inp"});
+  opts.forEach(([v,l])=>{ const o=h("option",{value:v},l); if(v===sel)o.selected=true; s.append(o); });
+  return s;
+}
+function rowBtns(pairs){
+  const r=D({class:"row-btns"});
+  pairs.forEach(([l,cls,cb])=>{ const b=B({class:`btn ${cls}`,onClick:cb},l); r.append(b); });
+  return r;
+}
+function docBadge(label,date){
+  const d=daysLeft(date),col=exCol(d);
+  return D({class:"doc-b",style:{background:`${col}18`,border:`1px solid ${col}44`}},[
+    S({style:{fontSize:"13px",fontWeight:"700"}},label),
+    S({style:{fontSize:"11px",color:col,fontWeight:"700"}},exLbl(d))
+  ]);
+}
+function pwField(lbl,ph){
+  const wrap=D({class:"pw-wrap"});
+  const inp=Inp({class:"inp",type:"password",placeholder:ph,style:{paddingLeft:"40px"}});
+  const eye=B({class:"pw-eye",onClick:()=>{ inp.type=inp.type==="password"?"text":"password"; eye.textContent=inp.type==="password"?"👁":"🙈"; }},"👁");
+  wrap.append(inp,eye);
+  const fd=D({class:"fld"},[h("label",{class:"lbl"},lbl),wrap]);
+  return{fd,inp};
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL — ADD / EDIT DRIVER
+══════════════════════════════════════════════════════ */
+function modalDriver(dObj=null){
+  const editing=!!dObj;
+  modal(editing?"✏️ تعديل السائق":"👤 إضافة سائق",(m,close)=>{
+    const name=mkI("الاسم الكامل *",dObj?.name||"");
+    const user=mkI("اسم المستخدم *",dObj?.username||"");
+    const phone=mkI("06XXXXXXXX",dObj?.phone||"","tel");
+    const{fd:pwFd,inp:pwInp}=pwField("كلمة السر *",editing?"(اتركها فارغة للإبقاء)":"أدخل كلمة سر");
+    const err=D({style:{color:"#f87171",fontSize:"12px",marginBottom:"8px"}});
+    m.append(fld("الاسم الكامل *",name),fld("اسم المستخدم *",user),fld("رقم الهاتف",phone),pwFd,err);
+    m.append(rowBtns([
+      ["💾 حفظ","btn gold",async()=>{
+        if(!name.value.trim()||!user.value.trim()){err.textContent="الاسم واسم المستخدم مطلوبان";return;}
+        if(!editing&&!pwInp.value){err.textContent="كلمة السر مطلوبة";return;}
+        const taken=ST.drivers.find(d=>d.username===user.value.trim()&&d.id!==dObj?.id);
+        if(taken){err.textContent="❌ اسم المستخدم مستخدم بالفعل";return;}
+        const f={name:name.value.trim(),username:user.value.trim(),phone:phone.value};
+        if(pwInp.value) f.password=pwInp.value;
+        if(editing) await DB.updateDriver(dObj.id,f);
+        else await DB.addDriver(f);
+        close();
+      }],
+      ["إلغاء","btn ghost",close]
+    ]));
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL — ADD / EDIT CAR
+══════════════════════════════════════════════════════ */
+function modalCar(carObj=null){
+  const editing=!!carObj;
+  const currentDriverIds=editing?ST.carDrivers.filter(r=>r.car_id===carObj.id).map(r=>r.driver_id):[];
+  modal(editing?"✏️ تعديل السيارة":"🚖 إضافة سيارة",(m,close)=>{
+    const plate=mkI("أ-١٢٣٤",carObj?.plate||"");
+    const brand=mkI("رونو...",carObj?.brand||"");
+    const model=mkI("لوغان...",carObj?.model||"");
+    const year=mkN("2020",carObj?.year||"");
+    const carColor=mkI("أبيض...",carObj?.car_color||"");
+    m.append(fld("رقم اللوحة *",plate),fld("الماركة",brand),fld("الموديل",model),fld("سنة الصنع",year),fld("اللون",carColor));
+
+    // multi-driver selection
+    m.append(D({class:"sec"},"👤 السائقون المكلفون بهذه السيارة"));
+    const drvWrap=D({style:{marginBottom:"14px"}});
+    const checkboxes=ST.drivers.map(d=>{
+      const cb=Inp({type:"checkbox","data-id":d.id});
+      if(currentDriverIds.includes(d.id)) cb.checked=true;
+      const row=h("label",{class:"chk-row"},[cb,S({style:{color:d.color,marginLeft:"2px"}},"●"),S({},[d.name," ",S({style:{color:"#475569",fontWeight:"400"}},`@${d.username}`)])]);
+      drvWrap.append(row);
+      return cb;
+    });
+    m.append(drvWrap);
+
+    m.append(D({class:"sec"},"📄 تواريخ انتهاء الوثائق"));
+    const ins=mkD(carObj?.doc_insurance||"");
+    const tech=mkD(carObj?.doc_technical||"");
+    const lic=mkD(carObj?.doc_license||"");
+    m.append(fld("🛡️ التأمين (لاصورانص)",ins),fld("🔧 الفحص التقني",tech),fld("📋 رخصة السياقة",lic));
+
+    m.append(rowBtns([
+      ["💾 حفظ","btn gold",async()=>{
+        if(!plate.value.trim())return;
+        const selDrivers=checkboxes.filter(c=>c.checked).map(c=>c.dataset.id);
+        const data={plate:plate.value.trim(),brand:brand.value,model:model.value,year:year.value,car_color:carColor.value,doc_insurance:ins.value||null,doc_technical:tech.value||null,doc_license:lic.value||null};
+        if(editing) await DB.updateCar(carObj.id,data,selDrivers);
+        else await DB.addCar(data,selDrivers);
+        close();
+      }],
+      ["إلغاء","btn ghost",close]
+    ]));
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL — ADD ENTRY
+══════════════════════════════════════════════════════ */
+function modalEntry(preDriverId=""){
+  const sess=ST.session;
+  modal("📋 تصريح يومي",(m,close)=>{
+    let dSel=null;
+    if(sess.role==="admin"&&!preDriverId){
+      dSel=mkSel([["","اختر السائق"],...ST.drivers.map(d=>[d.id,d.name])]);
+      m.append(fld("السائق *",dSel));
+    }
+    const getDriverCars=()=>{
+      const dId=preDriverId||dSel?.value||sess.driverId||"";
+      return dId?carsOfDriver(dId):ST.cars;
+    };
+    const cSel=mkSel([["","اختر السيارة"],...getDriverCars().map(c=>[c.id,`${c.plate} — ${c.brand} ${c.model}`])]);
+    if(dSel) dSel.addEventListener("change",()=>{
+      cSel.innerHTML="";
+      [["","اختر السيارة"],...getDriverCars().map(c=>[c.id,`${c.plate} — ${c.brand} ${c.model}`])]
+        .forEach(([v,l])=>{ const o=h("option",{value:v},l); cSel.append(o); });
+    });
+    m.append(fld("السيارة *",cSel));
+    const date=mkD(todayStr());
+    const income=mkN("350"); const km=mkN("120500");
+    const losses=mkN("0"); const lossNote=mkI("بنة، غرامة..."); const note=mkI("...");
+    const lossRow=fld("سبب الخسارة",lossNote);
+    lossRow.style.display="none";
+    losses.addEventListener("input",()=>{ lossRow.style.display=Number(losses.value)>0?"block":"none"; });
+    m.append(fld("التاريخ *",date),fld("💰 المدخول اليومي (درهم) *",income),fld("📏 الكيلومتراج الحالي (كم)",km),fld("📉 الخسائر (درهم)",losses),lossRow,fld("ملاحظة",note));
+    const err=D({style:{color:"#f87171",fontSize:"12px",marginBottom:"8px"}});
+    m.append(err);
+    m.append(rowBtns([
+      ["✅ تسجيل","btn gold",async()=>{
+        const dId=preDriverId||dSel?.value||sess.driverId;
+        if(!dId||!cSel.value||!income.value){err.textContent="السائق والسيارة والمدخول مطلوبة";return;}
+        await DB.addEntry({driver_id:dId,car_id:cSel.value,date:date.value,income:income.value,km:km.value,losses:losses.value,loss_note:lossNote.value,note:note.value});
+        close();
+      }],
+      ["إلغاء","btn ghost",close]
+    ]));
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL — ADD DAMAGE
+══════════════════════════════════════════════════════ */
+function modalDamage(preDriverId=""){
+  const sess=ST.session;
+  modal("📸 تسجيل ضرر",(m,close)=>{
+    let dSel=null;
+    if(sess.role==="admin"&&!preDriverId){
+      dSel=mkSel([["","اختر السائق"],...ST.drivers.map(d=>[d.id,d.name])]);
+      m.append(fld("السائق *",dSel));
+    }
+    const myCars=preDriverId?carsOfDriver(preDriverId):sess.role==="driver"?carsOfDriver(sess.driverId):ST.cars;
+    const cSel=mkSel([["","اختر السيارة"],...myCars.map(c=>[c.id,`${c.plate} — ${c.brand} ${c.model}`])]);
+    m.append(fld("السيارة *",cSel));
+    const desc=mkI("خدش في الباب الأيسر"); const loc=mkI("الباب الأمامي الأيمن"); const date=mkD(todayStr());
+    m.append(fld("وصف الضرر *",desc),fld("مكان الضرر",loc),fld("التاريخ",date));
+    let photoData=null;
+    const fileI=Inp({type:"file",accept:"image/*",capture:"environment",style:{display:"none"}});
+    const prev=Img({style:{display:"none",width:"100%",borderRadius:"12px",maxHeight:"200px",objectFit:"cover",marginBottom:"12px"}});
+    fileI.addEventListener("change",()=>{
+      const f=fileI.files[0]; if(!f)return;
+      const r=new FileReader(); r.onload=ev=>{ photoData=ev.target.result; prev.src=photoData; prev.style.display="block"; }; r.readAsDataURL(f);
+    });
+    const pb=B({class:"btn ghost",style:{width:"100%",padding:"12px",marginBottom:"12px"},onClick:()=>fileI.click()},"📸 اختيار / التقاط صورة");
+    m.append(fileI,pb,prev);
+    m.append(rowBtns([
+      ["✅ تسجيل","btn red-btn",async()=>{
+        const dId=preDriverId||dSel?.value||sess.driverId;
+        if(!dId||!cSel.value||!desc.value.trim())return;
+        await DB.addDamage({driver_id:dId,car_id:cSel.value,description:desc.value.trim(),location:loc.value,date:date.value,photo:photoData||null});
+        close();
+      }],
+      ["إلغاء","btn ghost",close]
+    ]));
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   LOGIN SCREEN
+══════════════════════════════════════════════════════ */
+function renderLogin(){
+  const root=document.getElementById("root");
+  root.innerHTML="";
+  let role="driver"; // "admin" | "driver"
+
+  const page=D({class:"page"});
+  const wrap=D({class:"login-wrap"});
+  const box=D({class:"login-box"});
+
+  box.append(D({class:"login-logo"},[
+    S({class:"icon"},"🚖"),
+    h("h1",{},"أسطول"),
+    h("p",{},"تسيير مداخيل سيارات الأجرة")
+  ]));
+
+  // role toggle
+  const roleRow=D({class:"login-role"});
+  const drvBtn=B({class:"role-btn active",onClick:()=>{ role="driver"; drvBtn.classList.add("active"); admBtn.classList.remove("active"); }},["🚖 سائق"]);
+  const admBtn=B({class:"role-btn",onClick:()=>{ role="admin"; admBtn.classList.add("active"); drvBtn.classList.remove("active"); }},"🔑 أدمين");
+  roleRow.append(drvBtn,admBtn);
+  box.append(roleRow);
+
+  const userInp=mkI("اسم المستخدم");
+  const{fd:pwFd,inp:pwInp}=pwField("كلمة السر","••••••••");
+  const errEl=D({class:"login-err"});
+  box.append(fld("اسم المستخدم",userInp),pwFd,errEl);
+
+  // enter key support
+  [userInp,pwInp].forEach(i=>i.addEventListener("keydown",e=>{ if(e.key==="Enter") tryLogin(); }));
+
+  const loginBtn=B({class:"btn gold full",style:{marginTop:"8px"},onClick:tryLogin},"دخول ←");
+  box.append(loginBtn);
+
+  async function tryLogin(){
+    const u=userInp.value.trim(), p=pwInp.value;
+    if(!u||!p){errEl.textContent="أدخل اسم المستخدم وكلمة السر";return;}
+    loginBtn.textContent="⏳ جاري التحقق...";
+    loginBtn.disabled=true;
+
+    if(role==="admin"){
+      if(u===ADMIN_USER&&p===ADMIN_PASS){
+        ST.session={role:"admin",name:"المدير"};
+        ST.tab="dashboard"; render(); return;
+      }
+      errEl.textContent="❌ اسم المستخدم أو كلمة السر خاطئة";
+    } else {
+      const driver=ST.drivers.find(d=>d.username===u&&d.password===p);
+      if(driver){
+        ST.session={role:"driver",driverId:driver.id,name:driver.name,color:driver.color};
+        ST.tab="entries"; render(); return;
+      }
+      errEl.textContent="❌ اسم المستخدم أو كلمة السر خاطئة";
+    }
+    loginBtn.textContent="دخول ←";
+    loginBtn.disabled=false;
+  }
+
+  wrap.append(box);
+  page.append(wrap);
+  root.append(page);
+}
+
+/* ══════════════════════════════════════════════════════
+   RENDER ROUTER
+══════════════════════════════════════════════════════ */
+function render(){
+  const root=document.getElementById("root");
+  const overlays=[...root.querySelectorAll(".overlay")];
+  root.innerHTML="";
+  overlays.forEach(o=>root.append(o));
+  if(ST.loading){
+    const p=D({class:"page"},[D({class:"loading"},[D({style:{fontSize:"56px"}},"🚖"),D({class:"spin"}),D({style:{color:"var(--gold)",fontWeight:"900"}},"جاري التحميل...")])]);
+    root.append(p); return;
+  }
+  if(!ST.session){ renderLogin(); return; }
+  ST.session.role==="admin"?renderAdmin(root):renderDriver(root);
+}
+
+/* ══════════════════════════════════════════════════════
+   ADMIN PANEL
+══════════════════════════════════════════════════════ */
+function renderAdmin(root){
+  const {drivers,cars,entries,damages}=ST;
+  const gs=statsFor(entries);
+  const maxInc=Math.max(...drivers.map(d=>statsFor(entries.filter(e=>e.driver_id===d.id)).income),1);
+
+  const warns=cars.flatMap(car=>{
+    const names=driversOfCar(car.id).map(d=>d.name).join("/");
+    return[["🛡️ التأمين",car.doc_insurance],["🔧 الفحص التقني",car.doc_technical],["📋 رخصة السياقة",car.doc_license]]
+      .filter(([,dt])=>{ const dl=daysLeft(dt); return dl!==null&&dl<=30; })
+      .map(([l,dt])=>({label:`${car.plate}(${names}) — ${l}`,date:dt}));
+  });
+
+  const page=D({class:"page"});
+
+  page.append(D({class:"hdr"},[
+    D({},[D({class:"hdr-title"},"🚖 لوحة الأدمين"),D({class:"hdr-sub"},`${drivers.length} سائق · ${cars.length} سيارة · ${entries.length} تصريح`)]),
+    D({style:{display:"flex",gap:"6px"}},[
+      B({class:"btn gold",style:{padding:"7px 12px",fontSize:"11px"},onClick:()=>modalDriver()},"+ سائق"),
+      B({class:"btn ghost",style:{padding:"7px 12px",fontSize:"11px"},onClick:()=>modalCar()},"+ سيارة"),
+      B({class:"btn ghost",style:{padding:"7px 12px",fontSize:"11px"},onClick:exportCSV},"📊"),
+      B({class:"btn ghost",style:{padding:"7px 12px",fontSize:"11px"},onClick:()=>{ ST.session=null;render(); }},"🚪")
+    ])
+  ]));
+
+  page.append(D({class:"info-bar"},[
+    S({style:{color:"#34d399"}},"🟢 متصل — Supabase"),
+    S({style:{color:"#334155"}},`آخر تحديث: ${new Date().toLocaleTimeString("ar")}`)
+  ]));
+
+  if(warns.length){
+    const wb=D({class:"warn"},[D({style:{fontWeight:"700",color:"#f87171",fontSize:"13px",marginBottom:"4px"}},"⚠️ وثائق تحتاج تجديد:")]);
+    warns.forEach(w=>wb.append(D({style:{fontSize:"12px",color:exCol(daysLeft(w.date)),marginBottom:"1px"}},`• ${w.label} — ${exLbl(daysLeft(w.date))}`)));
+    page.append(wb);
+  }
+
+  const tabsEl=D({class:"tabs"});
+  [["dashboard","📊 الرئيسية"],["drivers","👥 السائقون"],["cars","🚖 السيارات"],["entries","📋 التصريحات"]].forEach(([t,l])=>
+    tabsEl.append(B({class:`tab${ST.tab===t?" on":""}`,onClick:()=>{ ST.tab=t;render(); }},l)));
+  page.append(tabsEl);
+
+  const ct=D({class:"scroll"});
+
+  /* dashboard */
+  if(ST.tab==="dashboard"){
+    const grid=D({class:"kpi-grid"});
+    [{icon:"💰",label:"إجمالي المداخيل",val:`${fmt(gs.income)} د.م`,c:"#F59E0B"},
+     {icon:"📈",label:"الصافي الكلي",   val:`${fmt(gs.net)} د.م`,  c:gs.net>=0?"#10B981":"#EF4444"},
+     {icon:"📉",label:"إجمالي الخسائر", val:`${fmt(gs.losses)} د.م`,c:"#EF4444"},
+     {icon:"🛣️",label:"الكيلومتر الكلي",val:`${fmt(gs.km)} كم`,    c:"#3B82F6"}]
+    .forEach(k=>grid.append(D({class:"kpi"},[D({style:{fontSize:"24px",marginBottom:"5px"}},k.icon),D({style:{fontSize:"11px",color:"#475569",marginBottom:"4px"}},k.label),D({style:{fontSize:"17px",fontWeight:"900",color:k.c}},k.val)])));
+    ct.append(grid);
+    ct.append(D({style:{fontSize:"13px",fontWeight:"700",color:"#2d4060",marginBottom:"10px"}},"⚡ ملخص السائقين"));
+    drivers.forEach(d=>{
+      const s=statsFor(entries.filter(e=>e.driver_id===d.id));
+      const myCars=carsOfDriver(d.id);
+      const card=D({class:"card",style:{borderRight:`3px solid ${d.color}55`,cursor:"pointer"},onClick:()=>{ ST.tab="entries";render(); }});
+      const icon=D({style:{width:"46px",height:"46px",borderRadius:"12px",background:`${d.color}18`,border:`2px solid ${d.color}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",flexShrink:"0"}},"👤");
+      const info=D({class:"f1"},[
+        D({style:{fontWeight:"800",fontSize:"14px",marginBottom:"1px"}},[d.name," ",S({style:{fontSize:"11px",color:"#334155",fontWeight:"400"}},`@${d.username}`)]),
+        D({style:{fontSize:"11px",color:"#2d4060",marginBottom:"6px"}},myCars.length?myCars.map(c=>`🚖${c.plate}`).join(" "):"لا توجد سيارة"),
+        D({class:"prog"},D({class:"prog-bar",style:{background:d.color,width:`${Math.min(100,(s.income/maxInc)*100)}%`}}))
+      ]);
+      const right=D({class:"tl s0"},[
+        D({style:{fontWeight:"900",fontSize:"15px",color:s.net>=0?"#10B981":"#EF4444"}},fmt(s.net)),
+        D({style:{fontSize:"10px",color:"#334155"}},"د.م صافي"),
+        D({style:{fontSize:"10px",color:"#F59E0B",marginTop:"2px"}},`${s.count} يوم`)
+      ]);
+      card.append(D({class:"row"},[icon,info,right]));
+      ct.append(card);
+    });
+    if(!drivers.length) ct.append(D({class:"empty"},[D({class:"ei"},"👥"),D({},"أضف سائقا للبداية")]));
+  }
+
+  /* drivers */
+  if(ST.tab==="drivers"){
+    drivers.forEach(d=>{
+      const myCars=carsOfDriver(d.id);
+      const s=statsFor(entries.filter(e=>e.driver_id===d.id));
+      const card=D({class:"card"});
+      const icon=D({style:{width:"48px",height:"48px",borderRadius:"12px",background:`${d.color}18`,border:`2px solid ${d.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"22px"}},"👤");
+      const info=D({class:"f1"},[D({style:{fontWeight:"800",fontSize:"15px"}},d.name),D({style:{fontSize:"12px",color:"#475569"}},`👤 @${d.username} · 📱 ${d.phone||"—"}`)]);
+      const acts=D({style:{display:"flex",gap:"6px"}},[
+        B({class:"btn ghost",style:{padding:"6px 10px",fontSize:"12px"},onClick:()=>modalDriver(d)},"✏️"),
+        B({style:{background:"rgba(239,68,68,.12)",border:"none",color:"#f87171",cursor:"pointer",borderRadius:"8px",padding:"6px 10px",fontSize:"13px"},onClick:()=>{ if(confirm(`حذف ${d.name}؟`))DB.delDriver(d.id); }},"🗑️")
+      ]);
+      card.append(D({class:"row",style:{marginBottom:"10px"}},[icon,info,acts]));
+      // stats
+      card.append(D({style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"6px",marginBottom:"10px"}},[
+        D({style:{background:"rgba(245,158,11,.08)",borderRadius:"8px",padding:"6px 8px",textAlign:"center"}},[D({style:{fontSize:"10px",color:"#94a3b8"}},"المداخيل"),D({style:{fontSize:"13px",fontWeight:"800",color:"#F59E0B"}},`${fmt(s.income)} د.م`)]),
+        D({style:{background:"rgba(16,185,129,.08)",borderRadius:"8px",padding:"6px 8px",textAlign:"center"}},[D({style:{fontSize:"10px",color:"#94a3b8"}},"الصافي"),D({style:{fontSize:"13px",fontWeight:"800",color:s.net>=0?"#10B981":"#EF4444"}},`${fmt(s.net)} د.م`)]),
+        D({style:{background:"rgba(96,165,250,.08)",borderRadius:"8px",padding:"6px 8px",textAlign:"center"}},[D({style:{fontSize:"10px",color:"#94a3b8"}},"الكيلومتر"),D({style:{fontSize:"13px",fontWeight:"800",color:"#60a5fa"}},`${fmt(s.km)} كم`)]),
+      ]));
+      if(myCars.length){ const chips=D({style:{display:"flex",flexWrap:"wrap"}}); myCars.forEach(c=>chips.append(D({class:"chip"},[S({style:{fontSize:"14px"}},"🚖"),S({style:{fontWeight:"700"}},c.plate)]))); card.append(chips); }
+      else card.append(D({style:{fontSize:"12px",color:"#2d4060",textAlign:"center",padding:"6px"}},"لا توجد سيارة مسندة"));
+      ct.append(card);
+    });
+    ct.append(B({style:{width:"100%",padding:"14px",borderRadius:"12px",border:"2px dashed rgba(245,158,11,.2)",background:"transparent",color:"#F59E0B",cursor:"pointer",fontFamily:"'Cairo',sans-serif",fontSize:"13px",fontWeight:"700"},onClick:()=>modalDriver()},"+ إضافة سائق جديد"));
+  }
+
+  /* cars */
+  if(ST.tab==="cars"){
+    cars.forEach(car=>{
+      const drvs=driversOfCar(car.id);
+      const s=statsFor(entries.filter(e=>e.car_id===car.id));
+      const card=D({class:"card"});
+      card.append(D({class:"rbet",style:{marginBottom:"10px"}},[
+        D({class:"row"},[D({style:{fontSize:"38px"}},"🚖"),D({},[D({style:{fontWeight:"900",fontSize:"15px"}},[car.brand," ",car.model]),D({style:{fontSize:"11px",color:"#64748b"}},`📋 ${car.plate} ${car.year?"· "+car.year:""}${car.car_color?" · "+car.car_color:""}`)])]),
+        D({style:{display:"flex",gap:"6px"}},[
+          B({class:"btn ghost",style:{padding:"6px 10px",fontSize:"12px"},onClick:()=>modalCar(car)},"✏️"),
+          B({style:{background:"rgba(239,68,68,.12)",border:"none",color:"#f87171",cursor:"pointer",borderRadius:"8px",padding:"6px 10px",fontSize:"13px"},onClick:()=>{ if(confirm(`حذف ${car.plate}؟`))DB.deleteCar(car.id); }},"🗑️")
+        ])
+      ]));
+      const dr=D({style:{display:"flex",gap:"6px",marginBottom:"10px"}});
+      [["🛡️",car.doc_insurance],["🔧",car.doc_technical],["📋",car.doc_license]].forEach(([ic,dt])=>{
+        const dl=daysLeft(dt),col=exCol(dl);
+        dr.append(D({style:{flex:"1",background:`${col}18`,border:`1px solid ${col}44`,borderRadius:"8px",padding:"5px",textAlign:"center"}},[D({style:{fontSize:"14px"}},ic),D({style:{fontSize:"10px",color:col,fontWeight:"700"}},exLbl(dl))]));
+      });
+      card.append(dr);
+      if(drvs.length){ const chips=D({style:{display:"flex",flexWrap:"wrap",marginBottom:"8px"}}); drvs.forEach(d=>chips.append(D({class:"chip"},[S({style:{color:d.color}},"●"),d.name]))); card.append(chips); }
+      card.append(D({style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"6px"}},[
+        D({style:{background:"rgba(245,158,11,.08)",borderRadius:"8px",padding:"6px 8px",textAlign:"center"}},[D({style:{fontSize:"10px",color:"#94a3b8"}},"المداخيل"),D({style:{fontSize:"13px",fontWeight:"800",color:"#F59E0B"}},`${fmt(s.income)} د.م`)]),
+        D({style:{background:"rgba(16,185,129,.08)",borderRadius:"8px",padding:"6px 8px",textAlign:"center"}},[D({style:{fontSize:"10px",color:"#94a3b8"}},"الصافي"),D({style:{fontSize:"13px",fontWeight:"800",color:s.net>=0?"#10B981":"#EF4444"}},`${fmt(s.net)} د.م`)]),
+        D({style:{background:"rgba(96,165,250,.08)",borderRadius:"8px",padding:"6px 8px",textAlign:"center"}},[D({style:{fontSize:"10px",color:"#94a3b8"}},"الكيلومتر"),D({style:{fontSize:"13px",fontWeight:"800",color:"#60a5fa"}},`${fmt(s.km)} كم`)]),
+      ]));
+      ct.append(card);
+    });
+    ct.append(B({style:{width:"100%",padding:"14px",borderRadius:"12px",border:"2px dashed rgba(245,158,11,.2)",background:"transparent",color:"#F59E0B",cursor:"pointer",fontFamily:"'Cairo',sans-serif",fontSize:"13px",fontWeight:"700"},onClick:()=>modalCar()},"+ إضافة سيارة جديدة"));
+  }
+
+  /* entries */
+  if(ST.tab==="entries"){
+    ct.append(B({class:"btn full",style:{background:"linear-gradient(135deg,#F59E0B,#EF4444)",color:"#000"},onClick:()=>modalEntry()},"＋ إضافة تصريح"));
+    entries.slice(0,60).forEach(e=>{
+      const d=drivers.find(x=>x.id===e.driver_id);
+      const car=cars.find(x=>x.id===e.car_id);
+      const net=Number(e.income||0)-Number(e.losses||0);
+      const card=D({class:"card",style:{borderRight:`4px solid ${d?.color||"#333"}`}});
+      card.append(D({style:{display:"flex",alignItems:"center",gap:"6px",marginBottom:"8px",flexWrap:"wrap"}},[
+        d?S({class:"tag",style:{background:`${d.color}22`,color:d.color}},d.name):null,
+        car?S({class:"tag",style:{background:"rgba(255,255,255,.07)",color:"#94a3b8"}},`🚖 ${car.plate}`):null,
+        S({style:{fontSize:"11px",color:"#475569"}},`📅 ${e.date}`)
+      ].filter(Boolean)));
+      const nums=D({style:{display:"flex",flexWrap:"wrap",gap:"8px",fontSize:"13px",marginBottom:"4px"}});
+      nums.append(S({},[`💰 `,S({style:{fontWeight:"700",color:"#F59E0B"}},`${fmt(e.income)} د.م`)]));
+      if(Number(e.km)) nums.append(S({},[`🛣️ `,S({style:{fontWeight:"700",color:"#60a5fa"}},`${fmt(e.km)} كم`)]));
+      if(Number(e.losses)) nums.append(S({},[`📉 `,S({style:{fontWeight:"700",color:"#f87171"}},`-${fmt(e.losses)} د.م`)]));
+      card.append(nums);
+      const right=D({class:"tl s0"},[
+        D({style:{fontWeight:"900",fontSize:"16px",color:net>=0?"#10B981":"#EF4444"}},fmt(net)),
+        D({style:{fontSize:"10px",color:"#475569"}},"صافي"),
+        B({style:{marginTop:"4px",background:"rgba(239,68,68,.1)",border:"none",color:"#f87171",cursor:"pointer",borderRadius:"6px",padding:"3px 8px",fontSize:"11px"},onClick:()=>DB.delEntry(e.id)},"🗑️")
+      ]);
+      card.append(D({class:"rbet"},[D({class:"f1"},nums),right]));
+      ct.append(card);
+    });
+    if(!entries.length) ct.append(D({class:"empty"},[D({class:"ei"},"📋"),D({},"لا توجد تصريحات")]));
+  }
+
+  page.append(ct);
+  root.append(page);
+}
+
+/* ══════════════════════════════════════════════════════
+   DRIVER PORTAL
+══════════════════════════════════════════════════════ */
+function renderDriver(root){
+  const sess=ST.session;
+  const driver=ST.drivers.find(d=>d.id===sess.driverId);
+  if(!driver){ ST.session=null;render();return; }
+  const myCars=carsOfDriver(driver.id);
+  const myEntries=ST.entries.filter(e=>e.driver_id===driver.id);
+  const myDamages=ST.damages.filter(d=>d.driver_id===driver.id);
+  const s=statsFor(myEntries);
+
+  const docAlerts=myCars.flatMap(car=>[
+    ["التأمين",car.doc_insurance,car.plate],
+    ["الفحص التقني",car.doc_technical,car.plate],
+    ["رخصة السياقة",car.doc_license,car.plate],
+  ].filter(([,dt])=>{ const dl=daysLeft(dt);return dl!==null&&dl<=30; }));
+
+  const page=D({class:"page"});
+
+  const hdr=D({class:"drv-hdr",style:{background:`linear-gradient(135deg,${driver.color}ee,${driver.color}55)`}});
+  hdr.append(B({class:"back-btn",onClick:()=>{ ST.session=null;render(); }},"🚪 خروج"));
+  hdr.append(D({class:"row"},[
+    D({style:{width:"54px",height:"54px",borderRadius:"14px",background:"rgba(0,0,0,.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"26px",flexShrink:"0"}},"👤"),
+    D({},[D({style:{fontSize:"20px",fontWeight:"900"}},driver.name),D({style:{fontSize:"11px",opacity:".75"}},`@${driver.username} · 📱 ${driver.phone||"—"}`)])
+  ]));
+  if(myCars.length){
+    const chips=D({style:{display:"flex",flexWrap:"wrap",gap:"5px",marginTop:"10px"}});
+    myCars.forEach(c=>chips.append(D({style:{background:"rgba(0,0,0,.25)",borderRadius:"7px",padding:"3px 9px",fontSize:"11px",fontWeight:"700"}},`🚖 ${c.plate}`)));
+    hdr.append(chips);
+  }
+  const kRow=D({class:"drv-kpis"});
+  [{l:"المدخول",v:`${fmt(s.income)} د.م`,c:"#fff"},{l:"الصافي",v:`${fmt(s.net)} د.م`,c:s.net>=0?"#86efac":"#fca5a5"},{l:"الكيلومتر",v:`${fmt(s.km)} كم`,c:"#bfdbfe"}]
+    .forEach(k=>kRow.append(D({class:"drv-kpi"},[D({style:{fontSize:"10px",opacity:".7",marginBottom:"2px"}},k.l),D({style:{fontSize:"13px",fontWeight:"900",color:k.c}},k.v)])));
+  hdr.append(kRow);
+  page.append(hdr);
+
+  if(docAlerts.length){
+    const b=D({class:"warn"},[D({style:{fontWeight:"700",color:"#f87171",fontSize:"12px",marginBottom:"4px"}},"⚠️ وثائق تقترب من الانتهاء:")]);
+    docAlerts.forEach(([l,dt,plate])=>b.append(D({style:{fontSize:"11px",color:exCol(daysLeft(dt)),marginBottom:"2px"}},`• ${plate} — ${l}: ${exLbl(daysLeft(dt))}`)));
+    page.append(b);
+  }
+
+  const tabsEl=D({class:"tabs"});
+  [["entries","📋 تصريحاتي"],["docs","📄 وثائق"],["damages","🔨 أضرار"],["cars","🚖 سياراتي"]].forEach(([t,l])=>{
+    const tb=B({class:`tab${ST.tab===t?" on":""}`,onClick:()=>{ ST.tab=t;render(); }},l);
+    if(ST.tab===t) Object.assign(tb.style,{color:driver.color,borderBottomColor:driver.color,background:`${driver.color}10`});
+    tabsEl.append(tb);
+  });
+  page.append(tabsEl);
+  const ct=D({class:"scroll"});
+
+  /* entries */
+  if(ST.tab==="entries"){
+    ct.append(B({class:"btn full",style:{background:`linear-gradient(135deg,${driver.color},${driver.color}88)`,color:"#000"},onClick:()=>modalEntry(driver.id)},"＋ تسجيل تصريح يومي"));
+    if(!myEntries.length) ct.append(D({class:"empty"},[D({class:"ei"},"📋"),D({},"لا يوجد تصريح بعد")]));
+    myEntries.slice(0,50).forEach(e=>{
+      const car=ST.cars.find(c=>c.id===e.car_id);
+      const net=Number(e.income||0)-Number(e.losses||0);
+      const card=D({class:"card",style:{borderRight:`4px solid ${driver.color}`}});
+      card.append(D({style:{display:"flex",alignItems:"center",gap:"8px",marginBottom:"8px"}},[
+        car?S({class:"tag",style:{background:"rgba(255,255,255,.07)",color:"#94a3b8"}},`🚖 ${car.plate}`):null,
+        S({style:{fontSize:"11px",color:"#94a3b8"}},`📅 ${e.date}`)
+      ].filter(Boolean)));
+      const grid=D({class:"entry-grid"});
+      grid.append(D({class:"ebox",style:{background:"rgba(245,158,11,.1)"}},[D({style:{fontSize:"10px",color:"#94a3b8"}},"المدخول"),D({style:{fontWeight:"800",color:"#F59E0B",fontSize:"15px"}},[fmt(e.income)," ",S({style:{fontSize:"10px"}},"د.م")])]));
+      grid.append(D({class:"ebox",style:{background:"rgba(96,165,250,.1)"}},[D({style:{fontSize:"10px",color:"#94a3b8"}},"الكيلومتراج"),D({style:{fontWeight:"800",color:"#60a5fa",fontSize:"15px"}},[fmt(e.km)," ",S({style:{fontSize:"10px"}},"كم")])]));
+      if(Number(e.losses)>0) grid.append(D({class:"ebox",style:{background:"rgba(239,68,68,.1)",gridColumn:"1/-1"}},[D({style:{fontSize:"10px",color:"#94a3b8"}},`الخسائر${e.loss_note?" — "+e.loss_note:""}`),D({style:{fontWeight:"800",color:"#f87171",fontSize:"15px"}},[`- ${fmt(e.losses)} `,S({style:{fontSize:"10px"}},"د.م")])]));
+      card.append(grid);
+      if(e.note) card.append(D({style:{fontSize:"11px",color:"#475569",marginTop:"4px"}},`📝 ${e.note}`));
+      card.append(D({class:"rbet",style:{marginTop:"8px"}},[D({}),D({class:"tl"},[
+        D({style:{fontWeight:"900",fontSize:"17px",color:net>=0?"#10B981":"#EF4444"}},fmt(net)),
+        D({style:{fontSize:"10px",color:"#475569"}},"صافي"),
+        B({style:{marginTop:"3px",background:"rgba(239,68,68,.1)",border:"none",color:"#f87171",cursor:"pointer",borderRadius:"6px",padding:"3px 8px",fontSize:"11px"},onClick:()=>DB.delEntry(e.id)},"🗑️")
+      ])]));
+      ct.append(card);
+    });
+  }
+
+  /* docs */
+  if(ST.tab==="docs"){
+    ct.append(D({style:{fontSize:"12px",color:"#64748b",marginBottom:"14px"}},"تواريخ انتهاء الوثائق لكل سياراتك."));
+    if(!myCars.length) ct.append(D({class:"empty"},[D({class:"ei"},"📄"),D({},"لا توجد سيارة مسندة")]));
+    myCars.forEach(car=>{
+      ct.append(D({style:{fontWeight:"700",fontSize:"13px",color:driver.color,marginBottom:"8px",marginTop:"14px"}},`🚖 ${car.plate} — ${car.brand} ${car.model}`));
+      ct.append(docBadge("🛡️ التأمين (لاصورانص)",car.doc_insurance));
+      ct.append(docBadge("🔧 الفحص التقني",car.doc_technical));
+      ct.append(docBadge("📋 رخصة السياقة",car.doc_license));
+    });
+  }
+
+  /* damages */
+  if(ST.tab==="damages"){
+    ct.append(B({class:"btn full red-btn",onClick:()=>modalDamage(driver.id)},"📸 تسجيل ضرر جديد"));
+    if(!myDamages.length) ct.append(D({class:"empty"},[D({class:"ei"},"🚗"),D({},"لا توجد أضرار مسجلة")]));
+    myDamages.forEach(d=>{
+      const car=ST.cars.find(c=>c.id===d.car_id);
+      const card=D({class:"card",style:{borderRight:"4px solid #EF4444"}});
+      card.append(D({class:"rbet",style:{marginBottom:"8px"}},[
+        D({},[
+          car?S({class:"tag",style:{background:"rgba(255,255,255,.07)",color:"#94a3b8",marginBottom:"4px",display:"inline-block"}},`🚖 ${car.plate}`):null,
+          D({style:{fontWeight:"700",fontSize:"14px"}},`🔨 ${d.description}`),
+          d.location?D({style:{fontSize:"11px",color:"#64748b",marginTop:"2px"}},`📍 ${d.location}`):null,
+          D({style:{fontSize:"11px",color:"#475569",marginTop:"2px"}},`📅 ${d.date}`)
+        ].filter(Boolean)),
+        B({style:{background:"rgba(239,68,68,.1)",border:"none",color:"#f87171",cursor:"pointer",borderRadius:"6px",padding:"3px 8px",fontSize:"11px"},onClick:()=>DB.delDamage(d.id)},"🗑️")
+      ]));
+      if(d.photo) card.append(Img({src:d.photo,class:"dmg-img"}));
+      ct.append(card);
+    });
+  }
+
+  /* cars */
+  if(ST.tab==="cars"){
+    if(!myCars.length) ct.append(D({class:"empty"},[D({class:"ei"},"🚖"),D({},"لا توجد سيارة مسندة إليك")]));
+    myCars.forEach(car=>{
+      const sharedWith=driversOfCar(car.id).filter(d=>d.id!==driver.id);
+      const card=D({class:"card",style:{borderTop:`4px solid ${driver.color}`,paddingTop:"16px"}});
+      card.append(D({class:"row",style:{marginBottom:"14px"}},[D({style:{fontSize:"44px"}},"🚖"),D({},[D({style:{fontWeight:"900",fontSize:"18px"}},[car.brand," ",car.model]),D({style:{fontSize:"12px",color:"#64748b"}},`📋 ${car.plate}${car.year?" · "+car.year:""}${car.car_color?" · "+car.car_color:""}`)])]));
+      [["رقم اللوحة",car.plate],["الماركة",car.brand],["الموديل",car.model],["سنة الصنع",car.year],["اللون",car.car_color]].forEach(([k,v])=>
+        card.append(D({class:"sep"},[S({style:{fontSize:"12px",color:"#64748b"}},k),S({style:{fontWeight:"700"}},v||"—")])));
+      if(sharedWith.length){
+        card.append(D({style:{marginTop:"10px",fontSize:"11px",color:"#475569"}},"يتشارك هذه السيارة مع: "));
+        const chips=D({style:{display:"flex",flexWrap:"wrap",marginTop:"4px"}});
+        sharedWith.forEach(d=>chips.append(D({class:"chip"},[S({style:{color:d.color}},"●"),d.name])));
+        card.append(chips);
+      }
+      ct.append(card);
+    });
+  }
+
+  page.append(ct);
+  root.append(page);
+}
+
+/* ══════════════════════════════════════════════════════
+   EXPORT CSV
+══════════════════════════════════════════════════════ */
+function exportCSV(){
+  const {drivers,cars,entries}=ST;
+  const rows=[["السائق","اسم المستخدم","السيارة","اللوحة","التاريخ","المدخول","الكيلومتراج","الخسائر","سبب الخسارة","الصافي","ملاحظة"]];
+  [...entries].sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+    const d=drivers.find(x=>x.id===e.driver_id);
+    const c=cars.find(x=>x.id===e.car_id);
+    rows.push([d?.name||"",d?.username||"",`${c?.brand||""} ${c?.model||""}`.trim(),c?.plate||"",e.date,e.income,e.km,e.losses,e.loss_note,Number(e.income||0)-Number(e.losses||0),e.note]);
+  });
+  const csv="\uFEFF"+rows.map(r=>r.map(v=>`"${String(v||"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a"); a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv); a.download=`أسطول_${todayStr()}.csv`; a.click();
+}
+
+/* ══════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════ */
+render();
+loadAll().then(()=>render());
+</script>
+</body>
+</html>
